@@ -1,9 +1,9 @@
+import os
 import requests
 import streamlit as st
 
 TOKEN_URL = "https://auth.interbanking.com.ar/cas/oidc/accessToken"
 SCOPE = "info-financiera"
-
 
 @st.cache_data(ttl=7200)
 def _pedir_token(client_id, client_secret, url_servicio):
@@ -22,14 +22,30 @@ def _pedir_token(client_id, client_secret, url_servicio):
     )
 
     if not r.ok:
-        raise Exception(f"Error token: {r.text}")
+        raise Exception(f"Error al pedir token: {r.text}")
 
     return r.json()["access_token"]
 
 
-def obtener_token(secrets):
-    return _pedir_token(
-        secrets["client_id"],
-        secrets["client_secret"],
-        secrets["url_servicio"],
-    )
+def obtener_token(empresa: str):
+    """
+    Obtiene token usando variables de entorno en Azure.
+    Variables esperadas:
+        {EMPRESA}_CLIENTID
+        {EMPRESA}_SECRET
+        {EMPRESA}_USER  -> customer_id
+        {EMPRESA}_URL_SERVICIO
+    """
+
+    empresa_upper = empresa.upper()
+    client_id = os.environ.get(f"{empresa_upper}_CLIENTID")
+    client_secret = os.environ.get(f"{empresa_upper}_SECRET")
+    customer_id = os.environ.get(f"{empresa_upper}_USER")
+    url_servicio = os.environ.get(f"{empresa_upper}_URL_SERVICIO")
+
+    if not all([client_id, client_secret, customer_id, url_servicio]):
+        raise ValueError(f"Faltan variables de entorno para {empresa}")
+
+    # Devolvemos también customer_id si la función de movimientos lo necesita
+    token = _pedir_token(client_id, client_secret, url_servicio)
+    return token, customer_id

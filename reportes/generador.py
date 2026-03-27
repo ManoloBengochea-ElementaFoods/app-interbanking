@@ -7,12 +7,10 @@ import io
 import importlib
 from datetime import datetime
 
-import streamlit as st
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
-from auth import obtener_token
-
+from auth import obtener_token  # ahora usa variables de entorno de Azure
 
 # ─────────────────────────────────────────────
 # CONFIG EMPRESAS
@@ -63,6 +61,9 @@ ACCOUNT_FILL  = PatternFill("solid", fgColor="FFF2CC")
 ACCOUNT_FONT  = Font(bold=True, color="7B6000")
 NUMBER_FORMAT = '#,##0.00'
 
+# ─────────────────────────────────────────────
+# FUNCIONES DE FORMATO
+# ─────────────────────────────────────────────
 
 def _aplicar_fila(ws, row_num, fill, font):
     for cell in ws[row_num]:
@@ -149,25 +150,25 @@ def _aplicar_formato_hoja(ws):
 # ─────────────────────────────────────────────
 
 def generar_excel(empresa: str, desde: str, hasta: str, cuentas_seleccionadas=None):
-
-    secrets = st.secrets[empresa]
+    """
+    Genera un Excel en memoria usando variables de entorno de Azure.
+    """
 
     CUENTAS, obtener_extractos = cargar_modulos(empresa)
-    token = obtener_token(secrets)
+    token, customer_id = obtener_token(empresa)  # ahora obtiene token + customer_id
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Extractos"
 
     hubo_datos = False
-
     cuentas_a_usar = cuentas_seleccionadas if cuentas_seleccionadas else CUENTAS
-
     resultados = []
 
     for cuenta in cuentas_a_usar:
         try:
-            _, statements = obtener_extractos(cuenta, token, desde, hasta, secrets)
+            # Pasamos customer_id en lugar de secrets
+            _, statements = obtener_extractos(cuenta, token, desde, hasta, customer_id)
 
             if not statements:
                 resultados.append((cuenta, False))
@@ -175,7 +176,6 @@ def generar_excel(empresa: str, desde: str, hasta: str, cuentas_seleccionadas=No
 
             resultados.append((cuenta, True))
             hubo_datos = True
-
             _escribir_cuenta(ws, cuenta, statements, desde, hasta)
 
         except Exception:
@@ -189,5 +189,4 @@ def generar_excel(empresa: str, desde: str, hasta: str, cuentas_seleccionadas=No
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
-
     return buf.read(), resultados

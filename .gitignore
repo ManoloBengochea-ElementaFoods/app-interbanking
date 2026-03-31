@@ -6,6 +6,9 @@ srcELIANTUS/tokenEliantus.txt
 srcELEMENTA/tokenElementa.txt
 srcINTEGRA/tokenINTEGRA.txt
 
+# Claude Code local config
+.claude/
+
 # Python
 __pycache__/
 *.pyc
